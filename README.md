@@ -1,8 +1,18 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Study Planner
+
+Ứng dụng React Native quản lý học tập với 5 tab: Tổng quan, Môn học, Thời khóa biểu, Bài tập và Cá nhân. Các màn hình chi tiết dùng chung theme pastel; hồ sơ và trạng thái bài tập được lưu trên thiết bị.
+
+> Dữ liệu môn học, lịch học và bài tập hiện là dữ liệu minh họa. Kết quả học tập để trống cho đến khi có điểm thật.
 
 # Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+
+## Install dependencies
+
+```sh
+npm install
+```
 
 ## Step 1: Start Metro
 

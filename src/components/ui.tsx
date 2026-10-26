@@ -84,6 +84,7 @@ export function PrimaryButton({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       disabled={disabled}
       onPress={onPress}
       style={({pressed}) => [
@@ -106,6 +107,7 @@ export function SecondaryButton({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       onPress={onPress}
       style={({pressed}) => [styles.secondaryButton, pressed && styles.pressed]}>
       <Text style={styles.secondaryButtonText}>{label}</Text>
@@ -187,6 +189,17 @@ export function DemoNotice() {
   );
 }
 
+export function CacheTimestamp({savedAt}: {savedAt: string | null}) {
+  if (!savedAt) {
+    return null;
+  }
+  return (
+    <Text style={styles.cacheTimestamp}>
+      Cập nhật gần nhất: {new Date(savedAt).toLocaleString('vi-VN')}
+    </Text>
+  );
+}
+
 export function CourseCard({
   course,
   onPress,
@@ -200,6 +213,7 @@ export function CourseCard({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={`${course.code} ${course.name}, ${course.credits} tín chỉ`}
       onPress={onPress}
       style={({pressed}) => [
         styles.card,
@@ -241,6 +255,7 @@ export function AssignmentCard({
     <View style={styles.card}>
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={`${assignment.title}, hạn nộp ${dueLabel}`}
         onPress={onPress}
         style={({pressed}) => pressed && styles.pressed}>
         <View style={styles.cardTopRow}>
@@ -262,12 +277,17 @@ export function AssignmentCard({
         <Text style={styles.cardMeta}>Hạn nộp: {dueLabel}</Text>
       </Pressable>
       {onToggle ? (
-        <SecondaryButton
-          label={
-            assignment.completed ? 'Đánh dấu chưa xong' : 'Đánh dấu hoàn thành'
-          }
-          onPress={onToggle}
-        />
+        <View>
+          {assignment.id.startsWith('local:') ? (
+            <Text style={styles.pendingLabel}>Đang chờ đồng bộ</Text>
+          ) : null}
+          <SecondaryButton
+            label={
+              assignment.completed ? 'Đánh dấu chưa xong' : 'Đánh dấu hoàn thành'
+            }
+            onPress={onToggle}
+          />
+        </View>
       ) : null}
     </View>
   );
@@ -285,6 +305,7 @@ export function ScheduleCard({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={`${course?.name ?? 'Buổi học'}, ${weekdayNames[session.weekday % 7]}, ${session.startTime} đến ${session.endTime}`}
       onPress={onPress}
       style={({pressed}) => [
         styles.scheduleCard,
@@ -322,7 +343,9 @@ export function GradeCard({
         <Text style={styles.gradeScore}>{grade.total.toFixed(1)}</Text>
       </View>
       <Text style={styles.cardTitle}>{course?.name ?? 'Kết quả học tập'}</Text>
-      <Text style={styles.cardMeta}>{grade.term}</Text>
+      <Text style={styles.cardMeta}>
+        {grade.term} · {grade.letter} · GPA {grade.gpa.toFixed(1)}
+      </Text>
     </Pressable>
   );
 }
@@ -401,6 +424,8 @@ const styles = StyleSheet.create({
   emptyDescription: {color: colors.textSecondary, fontSize: typography.body, lineHeight: 22, textAlign: 'center'},
   demoNotice: {backgroundColor: colors.surfaceWarm, borderRadius: radii.sm, padding: spacing.md},
   demoNoticeText: {color: colors.textSecondary, fontSize: typography.caption, lineHeight: 18},
+  cacheTimestamp: {color: colors.textSecondary, fontSize: typography.caption},
   scheduleCard: {borderRadius: radii.md, gap: spacing.sm, padding: spacing.lg},
   gradeScore: {color: colors.text, fontSize: typography.heading, fontWeight: '800'},
+  pendingLabel: {color: colors.textSecondary, fontSize: typography.caption, fontWeight: '700'},
 });

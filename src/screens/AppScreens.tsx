@@ -1,8 +1,10 @@
-import React, {useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Pressable,
+  RefreshControl,
   SectionList,
   StyleSheet,
   Text,
@@ -10,25 +12,27 @@ import {
   View,
 } from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
-import type {CompositeNavigationProp} from '@react-navigation/native';
 import type {BottomTabNavigationProp} from '@react-navigation/bottom-tabs';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {
   Assignment,
   Profile,
 } from '../data/learningData';
-import {
-  colorForCourse,
-  grades,
-  weekdayNames,
-} from '../data/learningData';
-import type {RootStackParamList, RootTabParamList} from '../navigation/routes';
+import {colorForCourse, weekdayNames} from '../data/learningData';
+import type {
+  AssignmentsStackParamList,
+  CoursesStackParamList,
+  ProfileStackParamList,
+  RootTabParamList,
+  ScheduleStackParamList,
+} from '../navigation/routes';
 import {useAppData} from '../state/AppDataContext';
+import type {DataStatus} from '../state/AppDataContext';
 import {
   AssignmentCard,
+  CacheTimestamp,
   Card,
   CourseCard,
-  DemoNotice,
   EmptyState,
   GradeCard,
   Page,
@@ -40,35 +44,128 @@ import {
   SecondaryButton,
   StatusBadge,
 } from '../components/ui';
+import type {
+  AssignmentCreate,
+  AssignmentStatus,
+} from '../api/types';
+import {calculateWeightedGpa} from '../utils/grades';
+import {parseDueDate} from '../utils/dates';
+import {BASE_URL} from '../api/config';
 import {colors, radii, spacing, typography} from '../theme';
 
-type AppNavigation = CompositeNavigationProp<
-  BottomTabNavigationProp<RootTabParamList>,
-  NativeStackNavigationProp<RootStackParamList>
->;
+type CourseNavigation = NativeStackNavigationProp<CoursesStackParamList>;
+type ScheduleNavigation = NativeStackNavigationProp<ScheduleStackParamList>;
+type AssignmentNavigation = NativeStackNavigationProp<AssignmentsStackParamList>;
+type ProfileNavigation = NativeStackNavigationProp<ProfileStackParamList>;
+type TabsNavigation = BottomTabNavigationProp<RootTabParamList>;
 
-const useAppNavigation = () => useNavigation<AppNavigation>();
+function formatDate(value: string): string {
+  return new Date(value).toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
 
 function isOverdue(assignment: Assignment): boolean {
   return !assignment.completed && new Date(assignment.dueAt).getTime() < Date.now();
 }
 
-function dueSoon(assignment: Assignment): boolean {
-  const daysLeft =
-    (new Date(assignment.dueAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000);
-  return !assignment.completed && daysLeft >= 0 && daysLeft <= 7;
+function RequestStatus({
+  status,
+  onRetry,
+}: {
+  status: DataStatus;
+  onRetry: () => void;
+}) {
+  if (status.loading) {
+    return (
+      <View style={styles.requestState}>
+        <ActivityIndicator color={colors.text} />
+        <Text style={styles.requestText}>Đang tải dữ liệu...</Text>
+      </View>
+    );
+  }
+  if (status.error) {
+    return (
+      <Card style={styles.errorCard}>
+        <Text style={styles.errorText}>Không thể tải dữ liệu: {status.error}</Text>
+        <SecondaryButton label="Thử lại" onPress={onRetry} />
+      </Card>
+    );
+  }
+  return null;
+}
+
+function listRefresh(
+  refreshing: boolean,
+  onRefresh: () => void,
+): React.ReactElement {
+  return (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      tintColor={colors.text}
+      colors={[colors.text]}
+    />
+  );
 }
 
 export function OverviewScreen() {
-  const navigation = useAppNavigation();
-  const {courses, assignments, profile} = useAppData();
+  const navigation = useNavigation<TabsNavigation>();
+  const {courses, assignments, profile, status, refresh} = useAppData();
   const openAssignments = assignments.filter(item => !item.completed);
   const upcoming = [...openAssignments]
-    .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
+    .sort((first, second) => first.dueAt.localeCompare(second.dueAt))
     .slice(0, 3);
+  const refreshOverview = async () => {
+    await Promise.all([
+      refresh('courses'),
+      refresh('assignments'),
+      refresh('profile'),
+    ]);
+  };
+  const waiting =
+    status.courses.loading ||
+    status.assignments.loading ||
+    status.profile.loading;
+  const loadError =
+    status.courses.error || status.assignments.error || status.profile.error;
+  const failedResources = [
+    {label: 'môn học', error: status.courses.error},
+    {label: 'bài tập', error: status.assignments.error},
+    {label: 'hồ sơ', error: status.profile.error},
+  ].filter(
+    (resource): resource is {label: string; error: string} =>
+      resource.error !== null,
+  );
 
   return (
     <Page>
+      {waiting && courses.length === 0 && assignments.length === 0 ? (
+        <RequestStatus
+          status={{loading: true, error: null}}
+          onRetry={refreshOverview}
+        />
+      ) : null}
+      {loadError ? (
+        <Card style={styles.errorCard}>
+          <Text style={styles.errorText}>
+            Không tải được {failedResources.map(item => item.label).join(', ')}.
+          </Text>
+          {failedResources.map(item => (
+            <Text key={item.label} style={styles.errorDetail}>
+              {item.label}: {item.error}
+            </Text>
+          ))}
+          <Text style={styles.errorDetail}>
+            API đang được cấu hình là {BASE_URL}. Trên Android Emulator, hãy
+            chạy `npm run api` trong terminal của project và xác nhận API mở
+            được tại http://localhost:3000/courses trên máy tính.
+          </Text>
+          <SecondaryButton label="Thử tải lại" onPress={refreshOverview} />
+        </Card>
+      ) : null}
       <View style={styles.hero}>
         <Text style={styles.eyebrow}>KHÔNG GIAN HỌC TẬP CỦA BẠN</Text>
         <Text style={styles.heroTitle}>
@@ -78,18 +175,21 @@ export function OverviewScreen() {
           Một chút tiến bộ mỗi ngày sẽ tạo nên khác biệt.
         </Text>
         <Text style={styles.profileSummary}>
-          {profile.studentId ? `Mã SV ${profile.studentId}` : 'Cập nhật hồ sơ cá nhân'}
+          {profile.studentId ? `Mã SV ${profile.studentId}` : 'Hồ sơ sinh viên'}
         </Text>
       </View>
-
-      <DemoNotice />
-
       <View style={styles.statsRow}>
         <StatCard label="Môn học" value={String(courses.length)} tint={colors.course} />
         <StatCard label="Chưa xong" value={String(openAssignments.length)} tint={colors.progress} />
-        <StatCard label="Sắp đến hạn" value={String(assignments.filter(dueSoon).length)} tint={colors.surfaceWarm} />
+        <StatCard
+          label="Sắp đến hạn"
+          value={String(openAssignments.filter(item => {
+            const days = (new Date(item.dueAt).getTime() - Date.now()) / 86_400_000;
+            return days >= 0 && days <= 7;
+          }).length)}
+          tint={colors.surfaceWarm}
+        />
       </View>
-
       <SectionHeading
         title="Môn học của bạn"
         action="Xem tất cả"
@@ -99,10 +199,14 @@ export function OverviewScreen() {
         <CourseCard
           key={course.id}
           course={course}
-          onPress={() => navigation.navigate('CourseDetail', {courseId: course.id})}
+          onPress={() =>
+            navigation.navigate('Courses', {
+              screen: 'CourseDetail',
+              params: {courseId: course.id},
+            })
+          }
         />
       ))}
-
       <SectionHeading
         title="Bài tập sắp tới"
         action="Xem tất cả"
@@ -114,8 +218,9 @@ export function OverviewScreen() {
             key={assignment.id}
             assignment={assignment}
             onPress={() =>
-              navigation.navigate('AssignmentDetail', {
-                assignmentId: assignment.id,
+              navigation.navigate('Assignments', {
+                screen: 'AssignmentDetail',
+                params: {assignmentId: assignment.id},
               })
             }
           />
@@ -126,17 +231,32 @@ export function OverviewScreen() {
           description="Các bài tập mới sẽ xuất hiện tại đây."
         />
       )}
-
       <SectionHeading title="Truy cập nhanh" />
       <View style={styles.shortcutRow}>
-        <Shortcut label="Thời khóa biểu" symbol="▦" onPress={() => navigation.navigate('Schedule')} />
-        <Shortcut label="Hồ sơ" symbol="○" onPress={() => navigation.navigate('Profile')} />
+        <Shortcut
+          label="Thời khóa biểu"
+          symbol="▦"
+          onPress={() => navigation.navigate('Schedule')}
+        />
+        <Shortcut
+          label="Hồ sơ"
+          symbol="○"
+          onPress={() => navigation.navigate('Profile')}
+        />
       </View>
     </Page>
   );
 }
 
-function StatCard({label, value, tint}: {label: string; value: string; tint: string}) {
+function StatCard({
+  label,
+  value,
+  tint,
+}: {
+  label: string;
+  value: string;
+  tint: string;
+}) {
   return (
     <View style={[styles.statCard, {backgroundColor: tint}]}>
       <Text style={styles.statValue}>{value}</Text>
@@ -157,6 +277,7 @@ function Shortcut({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       onPress={onPress}
       style={({pressed}) => [styles.shortcut, pressed && styles.pressed]}>
       <Text style={styles.shortcutSymbol}>{symbol}</Text>
@@ -166,8 +287,8 @@ function Shortcut({
 }
 
 export function CoursesScreen() {
-  const navigation = useAppNavigation();
-  const {courses} = useAppData();
+  const navigation = useNavigation<CourseNavigation>();
+  const {courses, status, refresh, cacheSavedAt} = useAppData();
   const [query, setQuery] = useState('');
   const filtered = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('vi');
@@ -184,13 +305,18 @@ export function CoursesScreen() {
       contentContainerStyle={styles.listContent}
       data={filtered}
       keyExtractor={item => item.id}
+      refreshControl={listRefresh(status.courses.loading, () => refresh('courses'))}
       ListHeaderComponent={
         <View style={styles.listHeader}>
           <ScreenTitle
             title="Môn học"
             subtitle={`${courses.length} môn trong học kỳ này`}
           />
-          <DemoNotice />
+          <RequestStatus
+            status={status.courses}
+            onRetry={() => refresh('courses')}
+          />
+          <CacheTimestamp savedAt={cacheSavedAt.courses} />
           <SearchField
             value={query}
             onChangeText={setQuery}
@@ -205,10 +331,18 @@ export function CoursesScreen() {
         />
       )}
       ListEmptyComponent={
-        <EmptyState
-          title="Không tìm thấy môn học"
-          description="Thử tìm bằng tên hoặc mã môn khác."
-        />
+        status.courses.loading ? (
+          <ActivityIndicator color={colors.text} />
+        ) : (
+          <EmptyState
+            title={status.courses.error ? 'Không có dữ liệu môn học' : 'Không tìm thấy môn học'}
+            description={
+              status.courses.error
+                ? 'Thử tải lại khi máy chủ hoạt động.'
+                : 'Thử tìm bằng tên hoặc mã môn khác.'
+            }
+          />
+        )
       }
       ItemSeparatorComponent={ListGap}
       showsVerticalScrollIndicator={false}
@@ -217,15 +351,15 @@ export function CoursesScreen() {
 }
 
 export function ScheduleScreen() {
-  const navigation = useAppNavigation();
-  const {schedule} = useAppData();
+  const navigation = useNavigation<ScheduleNavigation>();
+  const {schedule, status, refresh, cacheSavedAt} = useAppData();
   const sections = useMemo(
     () =>
       Array.from({length: 7}, (_, index) => {
         const weekday = index + 1;
         const data = schedule
           .filter(session => session.weekday === weekday)
-          .sort((a, b) => a.startPeriod - b.startPeriod);
+          .sort((first, second) => first.startPeriod - second.startPeriod);
         return {
           title: weekdayNames[weekday % 7],
           weekday,
@@ -241,10 +375,18 @@ export function ScheduleScreen() {
       contentContainerStyle={styles.listContent}
       sections={sections}
       keyExtractor={(item, index) => item?.id ?? `empty-${index}`}
+      refreshControl={listRefresh(status.schedule.loading, () => refresh('schedule'))}
       ListHeaderComponent={
         <View style={styles.listHeader}>
-          <ScreenTitle title="Thời khóa biểu" subtitle={`${schedule.length} buổi học mỗi tuần`} />
-          <DemoNotice />
+          <ScreenTitle
+            title="Thời khóa biểu"
+            subtitle={`${schedule.length} buổi học mỗi tuần`}
+          />
+          <RequestStatus
+            status={status.schedule}
+            onRetry={() => refresh('schedule')}
+          />
+          <CacheTimestamp savedAt={cacheSavedAt.schedule} />
         </View>
       }
       renderSectionHeader={({section}) => (
@@ -276,8 +418,14 @@ export function ScheduleScreen() {
 }
 
 export function AssignmentsScreen() {
-  const navigation = useAppNavigation();
-  const {assignments, toggleAssignment} = useAppData();
+  const navigation = useNavigation<AssignmentNavigation>();
+  const {
+    assignments,
+    toggleAssignment,
+    status,
+    refresh,
+    cacheSavedAt,
+  } = useAppData();
   const [filter, setFilter] = useState<'all' | 'open' | 'done'>('all');
   const filtered = useMemo(
     () =>
@@ -289,7 +437,7 @@ export function AssignmentsScreen() {
               ? item.completed
               : !item.completed,
         )
-        .sort((a, b) => a.dueAt.localeCompare(b.dueAt)),
+        .sort((first, second) => first.dueAt.localeCompare(second.dueAt)),
     [assignments, filter],
   );
   const options = [
@@ -298,21 +446,39 @@ export function AssignmentsScreen() {
     {key: 'done', label: 'Hoàn thành'},
   ] as const;
 
+  const onToggle = async (id: string) => {
+    try {
+      await toggleAssignment(id);
+    } catch (error) {
+      Alert.alert('Không thể cập nhật', getFailureMessage(error));
+    }
+  };
+
   return (
     <FlatList
       style={styles.listScreen}
       contentContainerStyle={styles.listContent}
       data={filtered}
       keyExtractor={item => item.id}
+      refreshControl={listRefresh(status.assignments.loading, () => refresh('assignments'))}
       ListHeaderComponent={
         <View style={styles.listHeader}>
           <ScreenTitle title="Bài tập" subtitle="Theo dõi hạn nộp và tiến độ của bạn." />
-          <DemoNotice />
+          <RequestStatus
+            status={status.assignments}
+            onRetry={() => refresh('assignments')}
+          />
+          <CacheTimestamp savedAt={cacheSavedAt.assignments} />
+          <PrimaryButton
+            label="＋ Tạo bài tập"
+            onPress={() => navigation.navigate('CreateAssignment')}
+          />
           <View style={styles.filterRow}>
             {options.map(option => (
               <Pressable
                 key={option.key}
                 accessibilityRole="button"
+                accessibilityLabel={`Lọc bài tập: ${option.label}`}
                 onPress={() => setFilter(option.key)}
                 style={[
                   styles.filterChip,
@@ -336,14 +502,26 @@ export function AssignmentsScreen() {
           onPress={() =>
             navigation.navigate('AssignmentDetail', {assignmentId: item.id})
           }
-          onToggle={() => toggleAssignment(item.id)}
+          onToggle={() => onToggle(item.id)}
         />
       )}
       ListEmptyComponent={
-        <EmptyState
-          title="Không có bài tập trong danh sách"
-          description="Khi có bài tập, thông tin sẽ được hiển thị tại đây."
-        />
+        status.assignments.loading ? (
+          <ActivityIndicator color={colors.text} />
+        ) : (
+          <EmptyState
+            title={
+              status.assignments.error
+                ? 'Không có dữ liệu bài tập'
+                : 'Không có bài tập trong danh sách'
+            }
+            description={
+              status.assignments.error
+                ? 'Thử tải lại khi máy chủ hoạt động.'
+                : 'Điều chỉnh bộ lọc hoặc tạo bài tập mới.'
+            }
+          />
+        )
       }
       ItemSeparatorComponent={ListGap}
       showsVerticalScrollIndicator={false}
@@ -351,9 +529,148 @@ export function AssignmentsScreen() {
   );
 }
 
+export function CreateAssignmentScreen() {
+  const navigation = useNavigation<AssignmentNavigation>();
+  const {courses, createAssignment, status, refresh, isOnline} = useAppData();
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [courseId, setCourseId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    setError(null);
+    const normalizedTitle = title.trim();
+    if (!normalizedTitle) {
+      setError('Vui lòng nhập tiêu đề bài tập.');
+      return;
+    }
+    if (!courseId) {
+      setError('Vui lòng chọn môn học.');
+      return;
+    }
+    const dueDateIso = parseDueDate(dueDate);
+    if (!dueDateIso) {
+      setError('Hạn nộp phải là ngày hợp lệ và không ở trong quá khứ.');
+      return;
+    }
+
+    const payload: AssignmentCreate = {
+      courseId: Number(courseId),
+      title: normalizedTitle,
+      description: description.trim(),
+      dueDate: dueDateIso,
+      status: 'todo' satisfies AssignmentStatus,
+      updatedAt: new Date().toISOString(),
+    };
+    setSubmitting(true);
+    try {
+      const result = await createAssignment(payload);
+      Alert.alert(
+        result === 'queued' ? 'Đã lưu để đồng bộ' : 'Đã tạo bài tập',
+        result === 'queued'
+          ? 'Bài tập đã được lưu trên thiết bị và sẽ đồng bộ khi có mạng.'
+          : 'Bài tập mới đã được lưu trên máy chủ.',
+      );
+      navigation.goBack();
+    } catch (submitError) {
+      setError(getFailureMessage(submitError));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Page>
+      <ScreenTitle
+        title="Tạo bài tập"
+        subtitle={
+          isOnline
+            ? 'Bài tập sẽ được gửi đến máy chủ và hiển thị trong danh sách.'
+            : 'Bài tập được lưu trên thiết bị và sẽ gửi khi có mạng.'
+        }
+      />
+      {status.courses.error ? (
+        <RequestStatus
+          status={status.courses}
+          onRetry={() => refresh('courses')}
+        />
+      ) : null}
+      <Card>
+        <FormField label="Tiêu đề *">
+          <TextInput
+            accessibilityLabel="Tiêu đề bài tập"
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Ví dụ: Bài tập lập trình"
+            placeholderTextColor={colors.textSecondary}
+            style={styles.input}
+            maxLength={120}
+          />
+        </FormField>
+        <FormField label="Mô tả">
+          <TextInput
+            accessibilityLabel="Mô tả bài tập"
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Nội dung cần hoàn thành"
+            placeholderTextColor={colors.textSecondary}
+            style={[styles.input, styles.multilineInput]}
+            multiline
+            textAlignVertical="top"
+          />
+        </FormField>
+        <FormField label="Hạn nộp * (YYYY-MM-DD)">
+          <TextInput
+            accessibilityLabel="Hạn nộp theo năm tháng ngày"
+            value={dueDate}
+            onChangeText={setDueDate}
+            placeholder="2026-12-31"
+            placeholderTextColor={colors.textSecondary}
+            style={styles.input}
+            keyboardType="numbers-and-punctuation"
+            autoCapitalize="none"
+          />
+        </FormField>
+        <Text style={styles.fieldLabel}>Môn học *</Text>
+        {courses.map(course => (
+          <Pressable
+            key={course.id}
+            accessibilityRole="radio"
+            accessibilityState={{selected: courseId === course.id}}
+            accessibilityLabel={`${course.code} ${course.name}`}
+            onPress={() => setCourseId(course.id)}
+            style={[
+              styles.courseOption,
+              courseId === course.id && styles.courseOptionSelected,
+            ]}>
+            <Text style={styles.bodyText}>
+              {course.code} · {course.name}
+            </Text>
+          </Pressable>
+        ))}
+        {status.courses.loading ? (
+          <ActivityIndicator color={colors.text} />
+        ) : null}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <PrimaryButton
+          label={submitting ? 'Đang gửi...' : 'Tạo bài tập'}
+          disabled={submitting || courses.length === 0}
+          onPress={submit}
+        />
+        <SecondaryButton
+          label="Hủy"
+          onPress={() => navigation.goBack()}
+        />
+      </Card>
+    </Page>
+  );
+}
+
 export function ProfileScreen() {
-  const navigation = useAppNavigation();
-  const {profile} = useAppData();
+  const navigation = useNavigation<ProfileNavigation>();
+  const {profile, status, refresh, grades, cacheSavedAt} = useAppData();
   const rows = [
     ['Mã sinh viên', profile.studentId],
     ['Lớp', profile.className],
@@ -364,8 +681,12 @@ export function ProfileScreen() {
 
   return (
     <Page>
+      <RequestStatus
+        status={status.profile}
+        onRetry={() => refresh('profile')}
+      />
+      <CacheTimestamp savedAt={cacheSavedAt.profile} />
       <ScreenTitle title="Cá nhân" subtitle="Hồ sơ và kết quả học tập." />
-      <DemoNotice />
       <Card style={styles.profileCard}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
@@ -389,21 +710,35 @@ export function ProfileScreen() {
           label="Chỉnh sửa thông tin"
           onPress={() => navigation.navigate('EditProfile')}
         />
+        <SecondaryButton
+          label="Tải lại hồ sơ"
+          onPress={() => refresh('profile')}
+        />
       </Card>
-
-      <SectionHeading title="Kết quả học tập" />
-      {grades.length ? (
-        grades.map(grade => (
+      <SectionHeading
+        title="Kết quả học tập"
+        action="Xem tất cả"
+        onAction={() => navigation.navigate('Grades')}
+      />
+      {status.grades.error ? (
+        <RequestStatus
+          status={status.grades}
+          onRetry={() => refresh('grades')}
+        />
+      ) : grades.length ? (
+        grades.slice(0, 2).map(grade => (
           <GradeCard
             key={grade.id}
             grade={grade}
-            onPress={() => navigation.navigate('GradeDetail', {gradeId: grade.id})}
+            onPress={() =>
+              navigation.navigate('GradeDetail', {gradeId: grade.id})
+            }
           />
         ))
       ) : (
         <EmptyState
-          title="Chưa có kết quả học tập"
-          description="Điểm số chỉ xuất hiện khi có dữ liệu học tập được cung cấp."
+          title={status.grades.loading ? 'Đang tải kết quả học tập...' : 'Chưa có kết quả học tập'}
+          description="Điểm số được tải từ hệ thống học tập."
         />
       )}
     </Page>
@@ -411,10 +746,15 @@ export function ProfileScreen() {
 }
 
 export function EditProfileScreen() {
-  const navigation = useAppNavigation();
+  const navigation = useNavigation<ProfileNavigation>();
   const {profile, updateProfile} = useAppData();
   const [form, setForm] = useState(profile);
-  const fields: {key: keyof Profile; label: string; keyboard?: 'email-address' | 'phone-pad'}[] = [
+  const [submitting, setSubmitting] = useState(false);
+  const fields: {
+    key: keyof Profile;
+    label: string;
+    keyboard?: 'email-address' | 'phone-pad';
+  }[] = [
     {key: 'name', label: 'Họ và tên'},
     {key: 'studentId', label: 'Mã sinh viên'},
     {key: 'className', label: 'Lớp'},
@@ -423,45 +763,67 @@ export function EditProfileScreen() {
     {key: 'phone', label: 'Số điện thoại', keyboard: 'phone-pad'},
   ];
 
-  const save = () => {
+  useEffect(() => {
+    setForm(profile);
+  }, [profile]);
+
+  const save = async () => {
     if (!form.name.trim()) {
       Alert.alert('Thiếu thông tin', 'Vui lòng nhập họ và tên.');
       return;
     }
-    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    if (
+      form.email.trim() &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
+    ) {
       Alert.alert('Email chưa hợp lệ', 'Vui lòng kiểm tra lại địa chỉ email.');
       return;
     }
-    updateProfile({
-      ...form,
-      name: form.name.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-    });
-    Alert.alert('Đã lưu', 'Thông tin cá nhân đã được cập nhật.');
-    navigation.goBack();
+    setSubmitting(true);
+    try {
+      const result = await updateProfile(form);
+      Alert.alert(
+        result === 'queued' ? 'Đã lưu để đồng bộ' : 'Đã lưu',
+        result === 'queued'
+          ? 'Thông tin đã được lưu trên thiết bị và sẽ đồng bộ khi có mạng.'
+          : 'Thông tin cá nhân đã được cập nhật trên máy chủ.',
+      );
+      navigation.goBack();
+    } catch (error) {
+      Alert.alert('Không thể lưu thông tin', getFailureMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <Page>
-      <ScreenTitle title="Chỉnh sửa hồ sơ" subtitle="Thông tin được lưu trên thiết bị này." />
+      <ScreenTitle
+        title="Chỉnh sửa hồ sơ"
+        subtitle="Thông tin được cập nhật trên máy chủ."
+      />
       <Card>
         {fields.map(field => (
-          <View key={field.key} style={styles.formField}>
-            <Text style={styles.fieldLabel}>{field.label}</Text>
+          <FormField key={field.key} label={field.label}>
             <TextInput
               accessibilityLabel={field.label}
               keyboardType={field.keyboard ?? 'default'}
               autoCapitalize={field.key === 'email' ? 'none' : 'words'}
               value={form[field.key]}
-              onChangeText={value => setForm(current => ({...current, [field.key]: value}))}
+              onChangeText={value =>
+                setForm(current => ({...current, [field.key]: value}))
+              }
               placeholder={`${field.label} (tùy chọn)`}
               placeholderTextColor={colors.textSecondary}
               style={styles.input}
             />
-          </View>
+          </FormField>
         ))}
-        <PrimaryButton label="Lưu thông tin" onPress={save} />
+        <PrimaryButton
+          label={submitting ? 'Đang lưu...' : 'Lưu thông tin'}
+          disabled={submitting}
+          onPress={save}
+        />
         <SecondaryButton label="Hủy" onPress={() => navigation.goBack()} />
       </Card>
     </Page>
@@ -469,18 +831,35 @@ export function EditProfileScreen() {
 }
 
 export function CourseDetailScreen() {
-  const navigation = useAppNavigation();
-  const {courses, schedule, assignments} = useAppData();
+  const navigation = useNavigation<CourseNavigation>();
   const route = useRoute();
-  const courseId = (route.params as RootStackParamList['CourseDetail']).courseId;
+  const {courses, schedule, assignments, status, refresh} = useAppData();
+  const {courseId} = route.params as CoursesStackParamList['CourseDetail'];
   const course = courses.find(item => item.id === courseId);
   const sessions = schedule
     .filter(item => item.courseId === courseId)
-    .sort((a, b) => a.weekday - b.weekday || a.startPeriod - b.startPeriod);
+    .sort((first, second) => first.weekday - second.weekday || first.startPeriod - second.startPeriod);
   const tasks = assignments.filter(item => item.courseId === courseId);
+  const loading = status.courses.loading || status.schedule.loading;
 
+  if (!course && (status.courses.error || status.schedule.error)) {
+    return (
+      <Page>
+        <RequestStatus
+          status={status.courses.error ? status.courses : status.schedule}
+          onRetry={() => {
+            refresh('courses');
+            refresh('schedule');
+          }}
+        />
+      </Page>
+    );
+  }
+  if (!course && loading) {
+    return <Page><ActivityIndicator color={colors.text} /></Page>;
+  }
   if (!course) {
-    return <MissingData title="Không tìm thấy môn học" />;
+    return <Page><EmptyState title="Không tìm thấy môn học" /></Page>;
   }
   return (
     <Page>
@@ -499,9 +878,21 @@ export function CourseDetailScreen() {
           <ScheduleCard
             key={session.id}
             session={session}
-            onPress={() => navigation.navigate('ScheduleDetail', {sessionId: session.id})}
+            onPress={() =>
+              navigation.getParent()?.navigate('Schedule', {
+                screen: 'ScheduleDetail',
+                params: {sessionId: session.id},
+              })
+            }
           />
         ))
+      ) : status.schedule.loading ? (
+        <ActivityIndicator color={colors.text} />
+      ) : status.schedule.error ? (
+        <RequestStatus
+          status={status.schedule}
+          onRetry={() => refresh('schedule')}
+        />
       ) : (
         <EmptyState title="Chưa có lịch học cho môn này" />
       )}
@@ -511,9 +902,21 @@ export function CourseDetailScreen() {
           <AssignmentCard
             key={task.id}
             assignment={task}
-            onPress={() => navigation.navigate('AssignmentDetail', {assignmentId: task.id})}
+            onPress={() =>
+              navigation.getParent()?.navigate('Assignments', {
+                screen: 'AssignmentDetail',
+                params: {assignmentId: task.id},
+              })
+            }
           />
         ))
+      ) : status.assignments.loading ? (
+        <ActivityIndicator color={colors.text} />
+      ) : status.assignments.error ? (
+        <RequestStatus
+          status={status.assignments}
+          onRetry={() => refresh('assignments')}
+        />
       ) : (
         <EmptyState title="Chưa có bài tập cho môn này" />
       )}
@@ -522,12 +925,23 @@ export function CourseDetailScreen() {
 }
 
 export function ScheduleDetailScreen() {
-  const {schedule, courses} = useAppData();
   const route = useRoute();
-  const sessionId = (route.params as RootStackParamList['ScheduleDetail']).sessionId;
+  const {schedule, courses, status, refresh} = useAppData();
+  const {sessionId} = route.params as ScheduleStackParamList['ScheduleDetail'];
   const session = schedule.find(item => item.id === sessionId);
+  if (!session && status.schedule.loading) {
+    return <Page><ActivityIndicator color={colors.text} /></Page>;
+  }
   if (!session) {
-    return <MissingData title="Không tìm thấy buổi học" />;
+    return (
+      <Page>
+        <RequestStatus
+          status={status.schedule}
+          onRetry={() => refresh('schedule')}
+        />
+        {!status.schedule.error ? <EmptyState title="Không tìm thấy buổi học" /> : null}
+      </Page>
+    );
   }
   const course = courses.find(item => item.id === session.courseId);
   return (
@@ -544,6 +958,7 @@ export function ScheduleDetailScreen() {
         </Text>
       </View>
       <Card>
+        <InfoRow label="Ngày học" value={weekdayNames[session.weekday % 7]} />
         <InfoRow label="Giờ học" value={`${session.startTime} – ${session.endTime}`} />
         <InfoRow label="Phòng học" value={session.room} />
         <InfoRow label="Giảng viên" value={course?.instructor ?? 'Chưa cập nhật'} />
@@ -553,25 +968,41 @@ export function ScheduleDetailScreen() {
 }
 
 export function AssignmentDetailScreen() {
-  const navigation = useAppNavigation();
-  const {assignments, courses, toggleAssignment} = useAppData();
+  const navigation = useNavigation<AssignmentNavigation>();
   const route = useRoute();
-  const assignmentId = (route.params as RootStackParamList['AssignmentDetail']).assignmentId;
+  const {assignments, courses, toggleAssignment, status, refresh} = useAppData();
+  const {assignmentId} = route.params as AssignmentsStackParamList['AssignmentDetail'];
   const assignment = assignments.find(item => item.id === assignmentId);
+  if (!assignment && status.assignments.loading) {
+    return <Page><ActivityIndicator color={colors.text} /></Page>;
+  }
   if (!assignment) {
-    return <MissingData title="Không tìm thấy bài tập" />;
+    return (
+      <Page>
+        <RequestStatus
+          status={status.assignments}
+          onRetry={() => refresh('assignments')}
+        />
+        {!status.assignments.error ? <EmptyState title="Không tìm thấy bài tập" /> : null}
+      </Page>
+    );
   }
   const course = courses.find(item => item.id === assignment.courseId);
   const overdue = isOverdue(assignment);
+  const toggle = async () => {
+    try {
+      await toggleAssignment(assignment.id);
+      navigation.goBack();
+    } catch (error) {
+      Alert.alert('Không thể cập nhật', getFailureMessage(error));
+    }
+  };
   return (
     <Page>
       <ScreenTitle title={assignment.title} subtitle={course?.name ?? 'Môn học'} />
       <Card>
         <InfoRow label="Mã môn" value={course?.code ?? 'Chưa cập nhật'} />
-        <InfoRow
-          label="Hạn nộp"
-          value={new Date(assignment.dueAt).toLocaleString('vi-VN')}
-        />
+        <InfoRow label="Hạn nộp" value={`${formatDate(assignment.dueAt)} ${new Date(assignment.dueAt).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'})}`} />
         <InfoRow
           label="Trạng thái"
           value={assignment.completed ? 'Hoàn thành' : overdue ? 'Quá hạn' : 'Chưa hoàn thành'}
@@ -587,23 +1018,90 @@ export function AssignmentDetailScreen() {
         ) : null}
         <PrimaryButton
           label={assignment.completed ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
-          onPress={() => {
-            toggleAssignment(assignment.id);
-            navigation.goBack();
-          }}
+          onPress={toggle}
         />
       </Card>
     </Page>
   );
 }
 
+export function GradesScreen() {
+  const navigation = useNavigation<ProfileNavigation>();
+  const {grades, courses, status, refresh, cacheSavedAt} = useAppData();
+  const actualGrades = grades.map(grade => ({
+    ...grade,
+    course: courses.find(course => course.id === grade.courseId) ?? {
+      id: grade.courseId,
+      code: '',
+      name: '',
+      credits: 0,
+      instructor: '',
+      room: '',
+      description: '',
+    },
+  }));
+  const actualSummary = calculateWeightedGpa(actualGrades);
+
+  return (
+    <FlatList
+      style={styles.listScreen}
+      contentContainerStyle={styles.listContent}
+      data={grades}
+      keyExtractor={item => item.id}
+      refreshControl={listRefresh(status.grades.loading, () => refresh('grades'))}
+      ListHeaderComponent={
+        <View style={styles.listHeader}>
+          <ScreenTitle
+            title="Điểm số và GPA"
+            subtitle={`${actualSummary.earnedCredits} tín chỉ tích lũy · GPA ${actualSummary.gpa.toFixed(2)}`}
+          />
+          <RequestStatus
+            status={status.grades}
+            onRetry={() => refresh('grades')}
+          />
+          <CacheTimestamp savedAt={cacheSavedAt.grades} />
+        </View>
+      }
+      renderItem={({item}) => (
+        <GradeCard
+          grade={item}
+          onPress={() => navigation.navigate('GradeDetail', {gradeId: item.id})}
+        />
+      )}
+      ListEmptyComponent={
+        status.grades.loading ? (
+          <ActivityIndicator color={colors.text} />
+        ) : (
+          <EmptyState
+            title={status.grades.error ? 'Không thể tải điểm số' : 'Chưa có kết quả học tập'}
+            description={status.grades.error ?? 'Kết quả học tập sẽ xuất hiện tại đây.'}
+          />
+        )
+      }
+      ItemSeparatorComponent={ListGap}
+      showsVerticalScrollIndicator={false}
+    />
+  );
+}
+
 export function GradeDetailScreen() {
-  const {courses} = useAppData();
   const route = useRoute();
-  const gradeId = (route.params as RootStackParamList['GradeDetail']).gradeId;
+  const {courses, grades, status, refresh} = useAppData();
+  const {gradeId} = route.params as ProfileStackParamList['GradeDetail'];
   const grade = grades.find(item => item.id === gradeId);
+  if (!grade && status.grades.loading) {
+    return <Page><ActivityIndicator color={colors.text} /></Page>;
+  }
   if (!grade) {
-    return <MissingData title="Chưa có dữ liệu kết quả" />;
+    return (
+      <Page>
+        <RequestStatus
+          status={status.grades}
+          onRetry={() => refresh('grades')}
+        />
+        {!status.grades.error ? <EmptyState title="Chưa có dữ liệu kết quả" /> : null}
+      </Page>
+    );
   }
   const course = courses.find(item => item.id === grade.courseId);
   return (
@@ -612,7 +1110,10 @@ export function GradeDetailScreen() {
       <Card>
         <InfoRow label="Mã môn" value={course?.code ?? 'Chưa cập nhật'} />
         <InfoRow label="Học kỳ" value={grade.term} />
-        <InfoRow label="Điểm tổng kết" value={grade.total.toFixed(1)} />
+        <InfoRow label="Tín chỉ" value={String(course?.credits ?? 0)} />
+        <InfoRow label="Điểm tổng kết" value={grade.total.toFixed(2)} />
+        <InfoRow label="Điểm chữ" value={grade.letter} />
+        <InfoRow label="GPA" value={grade.gpa.toFixed(1)} />
       </Card>
       <SectionHeading title="Điểm thành phần" />
       {grade.components?.length ? (
@@ -632,6 +1133,18 @@ export function GradeDetailScreen() {
   );
 }
 
+function FormField({
+  label,
+  children,
+}: React.PropsWithChildren<{label: string}>) {
+  return (
+    <View style={styles.formField}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      {children}
+    </View>
+  );
+}
+
 function InfoRow({label, value}: {label: string; value: string}) {
   return (
     <View style={styles.infoRow}>
@@ -641,12 +1154,16 @@ function InfoRow({label, value}: {label: string; value: string}) {
   );
 }
 
-function MissingData({title}: {title: string}) {
-  return (
-    <Page>
-      <EmptyState title={title} description="Dữ liệu có thể đã bị thay đổi hoặc không còn tồn tại." />
-    </Page>
-  );
+function getFailureMessage(error: unknown): string {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof error.message === 'string'
+  ) {
+    return error.message;
+  }
+  return 'Đã xảy ra lỗi. Vui lòng thử lại.';
 }
 
 function ListGap() {
@@ -695,7 +1212,15 @@ const styles = StyleSheet.create({
   fieldLabel: {color: colors.textSecondary, fontSize: typography.caption, fontWeight: '700'},
   bodyText: {color: colors.text, fontSize: typography.body, lineHeight: 23},
   input: {backgroundColor: colors.surfaceWarm, borderRadius: radii.sm, color: colors.text, fontSize: typography.body, minHeight: 48, paddingHorizontal: spacing.md},
+  multilineInput: {minHeight: 100, paddingTop: spacing.md},
+  courseOption: {backgroundColor: colors.surfaceWarm, borderColor: colors.border, borderRadius: radii.sm, borderWidth: 1, marginTop: spacing.sm, padding: spacing.md},
+  courseOptionSelected: {backgroundColor: colors.course, borderColor: colors.textSecondary},
   courseHero: {borderRadius: radii.lg, gap: spacing.md, padding: spacing.xl},
   descriptionBlock: {gap: spacing.sm, paddingVertical: spacing.md},
   overdueNotice: {backgroundColor: colors.dangerSurface, borderRadius: radii.sm, color: colors.danger, fontSize: typography.body, lineHeight: 22, padding: spacing.md},
+  requestState: {alignItems: 'center', gap: spacing.sm, padding: spacing.lg},
+  requestText: {color: colors.textSecondary, fontSize: typography.body},
+  errorCard: {backgroundColor: colors.dangerSurface},
+  errorText: {color: colors.danger, fontSize: typography.body, lineHeight: 22},
+  errorDetail: {color: colors.danger, fontSize: typography.caption, lineHeight: 19},
 });

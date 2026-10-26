@@ -26,6 +26,7 @@ export type Assignment = {
   dueAt: string;
   description: string;
   completed: boolean;
+  clientRequestId?: string;
 };
 
 import {colors} from '../theme';
@@ -35,6 +36,11 @@ export type Grade = {
   courseId: string;
   term: string;
   total: number;
+  attendance: number;
+  midterm: number;
+  final: number;
+  letter: string;
+  gpa: number;
   components?: {label: string; score: number}[];
 };
 

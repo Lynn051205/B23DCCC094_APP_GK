@@ -1,0 +1,247 @@
+{
+  "students": [
+    {
+      "id": 1,
+      "studentCode": "B23DCCC094",
+      "name": "Đinh Phương Linh",
+      "className": "D23CQCN01-B",
+      "major": "Công nghệ thông tin",
+      "email": "minhanh@example.edu.vn",
+      "phone": "0901234567",
+      "updatedAt": "2026-10-26T09:31:49.461Z"
+    },
+    {
+      "id": 2,
+      "studentCode": "B23DCCC095",
+      "name": "Trần Hoàng Nam",
+      "className": "D23CQCN01-B",
+      "major": "Công nghệ thông tin",
+      "email": "hoangnam@example.edu.vn",
+      "phone": "0901234568",
+      "updatedAt": "2026-10-01T08:00:00.000Z"
+    },
+    {
+      "id": 3,
+      "studentCode": "B23DCCC096",
+      "name": "Lê Thu Hà",
+      "className": "D23CQCN01-B",
+      "major": "Công nghệ thông tin",
+      "email": "thuha@example.edu.vn",
+      "phone": "0901234569",
+      "updatedAt": "2026-10-01T08:00:00.000Z"
+    },
+    {
+      "id": 4,
+      "studentCode": "B23DCCC097",
+      "name": "Phạm Quốc Bảo",
+      "className": "D23CQCN01-B",
+      "major": "Công nghệ thông tin",
+      "email": "quocbao@example.edu.vn",
+      "phone": "0901234570",
+      "updatedAt": "2026-10-01T08:00:00.000Z"
+    },
+    {
+      "id": 5,
+      "studentCode": "B23DCCC098",
+      "name": "Đỗ Khánh Linh",
+      "className": "D23CQCN01-B",
+      "major": "Công nghệ thông tin",
+      "email": "khanhlinh@example.edu.vn",
+      "phone": "0901234571",
+      "updatedAt": "2026-10-01T08:00:00.000Z"
+    }
+  ],
+  "courses": [
+    {
+      "id": 1,
+      "code": "IT3040",
+      "name": "Lập trình ứng dụng di động",
+      "credits": 3,
+      "instructor": "Nguyễn Minh Hà",
+      "room": "A205",
+      "description": "Nguyên lý thiết kế và phát triển ứng dụng di động đa nền tảng."
+    },
+    {
+      "id": 2,
+      "code": "IT3020",
+      "name": "Cơ sở dữ liệu",
+      "credits": 3,
+      "instructor": "Trần Quốc Bảo",
+      "room": "B104",
+      "description": "Mô hình dữ liệu quan hệ, truy vấn SQL và thiết kế cơ sở dữ liệu."
+    },
+    {
+      "id": 3,
+      "code": "IT3030",
+      "name": "Phát triển ứng dụng web",
+      "credits": 3,
+      "instructor": "Lê Thu Trang",
+      "room": "A302",
+      "description": "Các nền tảng và kỹ thuật xây dựng ứng dụng web hiện đại."
+    },
+    {
+      "id": 4,
+      "code": "IT2010",
+      "name": "Cấu trúc dữ liệu và giải thuật",
+      "credits": 4,
+      "instructor": "Phạm Anh Tuấn",
+      "room": "C202",
+      "description": "Cấu trúc dữ liệu cơ bản và phân tích độ phức tạp thuật toán."
+    },
+    {
+      "id": 5,
+      "code": "ENG201",
+      "name": "Tiếng Anh chuyên ngành",
+      "credits": 2,
+      "instructor": "Hoàng Thu Phương",
+      "room": "D101",
+      "description": "Từ vựng và kỹ năng giao tiếp tiếng Anh trong lĩnh vực công nghệ."
+    }
+  ],
+  "sessions": [
+    {
+      "id": 1,
+      "courseId": 1,
+      "dayOfWeek": 2,
+      "startPeriod": 1,
+      "endPeriod": 3,
+      "startTime": "2026-11-02T07:00:00.000Z",
+      "endTime": "2026-11-02T09:30:00.000Z",
+      "room": "A205"
+    },
+    {
+      "id": 2,
+      "courseId": 2,
+      "dayOfWeek": 3,
+      "startPeriod": 4,
+      "endPeriod": 6,
+      "startTime": "2026-11-03T09:40:00.000Z",
+      "endTime": "2026-11-03T12:10:00.000Z",
+      "room": "B104"
+    },
+    {
+      "id": 3,
+      "courseId": 3,
+      "dayOfWeek": 4,
+      "startPeriod": 1,
+      "endPeriod": 3,
+      "startTime": "2026-11-04T07:00:00.000Z",
+      "endTime": "2026-11-04T09:30:00.000Z",
+      "room": "A302"
+    },
+    {
+      "id": 4,
+      "courseId": 4,
+      "dayOfWeek": 5,
+      "startPeriod": 7,
+      "endPeriod": 9,
+      "startTime": "2026-11-05T13:00:00.000Z",
+      "endTime": "2026-11-05T15:30:00.000Z",
+      "room": "C202"
+    },
+    {
+      "id": 5,
+      "courseId": 5,
+      "dayOfWeek": 6,
+      "startPeriod": 4,
+      "endPeriod": 5,
+      "startTime": "2026-11-06T09:40:00.000Z",
+      "endTime": "2026-11-06T11:20:00.000Z",
+      "room": "D101"
+    }
+  ],
+  "assignments": [
+    {
+      "id": 1,
+      "courseId": 1,
+      "title": "Ứng dụng ghi chú cá nhân",
+      "description": "Hoàn thiện giao diện danh sách ghi chú và luồng tạo ghi chú mới.",
+      "dueDate": "2026-11-10T16:59:00.000Z",
+      "status": "todo",
+      "updatedAt": "2026-10-20T08:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "courseId": 2,
+      "title": "Thiết kế cơ sở dữ liệu thư viện",
+      "description": "Vẽ sơ đồ ERD và chuyển đổi sang mô hình quan hệ.",
+      "dueDate": "2026-11-12T16:59:00.000Z",
+      "status": "todo",
+      "updatedAt": "2026-10-20T08:00:00.000Z"
+    },
+    {
+      "id": 3,
+      "courseId": 3,
+      "title": "Trang giới thiệu sản phẩm",
+      "description": "Xây dựng trang giới thiệu responsive theo yêu cầu môn học.",
+      "dueDate": "2026-11-15T16:59:00.000Z",
+      "status": "done",
+      "updatedAt": "2026-10-20T08:00:00.000Z"
+    },
+    {
+      "id": 4,
+      "courseId": 4,
+      "title": "Cài đặt cây tìm kiếm nhị phân",
+      "description": "Cài đặt thao tác thêm, tìm kiếm và duyệt cây bằng TypeScript.",
+      "dueDate": "2026-11-18T16:59:00.000Z",
+      "status": "todo",
+      "updatedAt": "2026-10-20T08:00:00.000Z"
+    },
+    {
+      "id": 5,
+      "courseId": 5,
+      "title": "Thuyết trình chủ đề công nghệ",
+      "description": "Chuẩn bị bài thuyết trình tiếng Anh về một công nghệ mới.",
+      "dueDate": "2026-11-20T16:59:00.000Z",
+      "status": "todo",
+      "updatedAt": "2026-10-20T08:00:00.000Z"
+    }
+  ],
+  "grades": [
+    {
+      "id": 1,
+      "courseId": 1,
+      "term": "2026-1",
+      "attendance": 8,
+      "midterm": 7,
+      "final": 8.5,
+      "total": 8
+    },
+    {
+      "id": 2,
+      "courseId": 2,
+      "term": "2026-1",
+      "attendance": 9,
+      "midterm": 8,
+      "final": 7.5,
+      "total": 7.8
+    },
+    {
+      "id": 3,
+      "courseId": 3,
+      "term": "2026-1",
+      "attendance": 7.5,
+      "midterm": 8,
+      "final": 9,
+      "total": 8.55
+    },
+    {
+      "id": 4,
+      "courseId": 4,
+      "term": "2026-1",
+      "attendance": 8,
+      "midterm": 6,
+      "final": 5,
+      "total": 5.6
+    },
+    {
+      "id": 5,
+      "courseId": 5,
+      "term": "2026-1",
+      "attendance": 9,
+      "midterm": 7,
+      "final": 4,
+      "total": 5.4
+    }
+  ]
+}

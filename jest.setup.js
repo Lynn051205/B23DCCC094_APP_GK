@@ -18,3 +18,15 @@ jest.mock('@react-native-async-storage/async-storage', () => {
     },
   };
 });
+
+jest.mock('react-native-screens', () => {
+  const View = require('react-native').View;
+  return {
+    enableScreens: jest.fn(),
+    screensEnabled: jest.fn(() => true),
+    Screen: View,
+    ScreenContainer: View,
+    NativeScreen: View,
+    NativeScreenContainer: View,
+  };
+});

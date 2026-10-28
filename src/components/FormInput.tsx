@@ -26,7 +26,7 @@ export function FormInput({
 }: Props) {
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>{label}</Text>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -43,12 +43,12 @@ export function FormInput({
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   label: {
     ...typography.caption,
     color: colors.textSecondary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
     fontWeight: '600',
   },
   input: {
@@ -63,6 +63,7 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: colors.danger,
+    borderWidth: 1.5,
   },
   error: {
     ...typography.caption,

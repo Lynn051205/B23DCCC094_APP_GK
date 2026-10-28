@@ -5,7 +5,10 @@ export function getEndHour(startHour: number, hours: number): number {
 }
 
 export function computeTotalPrice(pricePerHour: number, hours: number): number {
-  return pricePerHour * hours;
+  if (!Number.isFinite(hours) || hours <= 0) {
+    return 0;
+  }
+  return Math.round(pricePerHour * hours);
 }
 
 export function hasTimeOverlap(

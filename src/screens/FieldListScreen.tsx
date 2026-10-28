@@ -64,32 +64,42 @@ export function FieldListScreen({navigation}: Props) {
         ItemSeparatorComponent={ListSeparator}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.overline}>FIELD MANAGER</Text>
+            <Text style={styles.overline}>FOOTBALL FIELD APP</Text>
             <Text style={styles.title}>Quản lý sân bóng</Text>
             <Text style={styles.subtitle}>
-              Theo dõi sân mini, lịch đặt và trạng thái vận hành.
+              Quản lý danh sách sân và lịch đặt sân mini.
             </Text>
-            <View style={styles.stats}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{stats.total}</Text>
-                <Text style={styles.statLabel}>sân</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, styles.success]}>
-                  {stats.active}
+
+            <View style={styles.banner}>
+              <View style={styles.bannerTop}>
+                <Text style={styles.bannerSummary}>
+                  {stats.active}/{stats.total} sân hoạt động
                 </Text>
-                <Text style={styles.statLabel}>hoạt động</Text>
+                <View style={styles.liveIndicator}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveText}>Hoạt động</Text>
+                </View>
               </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, styles.warning]}>
-                  {stats.maintenance}
-                </Text>
-                <Text style={styles.statLabel}>bảo trì</Text>
+              <View style={styles.statsRow}>
+                <View style={styles.statChip}>
+                  <Text style={styles.statNum}>{stats.total}</Text>
+                  <Text style={styles.statText}>Tổng sân</Text>
+                </View>
+                <View style={styles.statChip}>
+                  <Text style={[styles.statNum, styles.successColor]}>
+                    {stats.active}
+                  </Text>
+                  <Text style={styles.statText}>Hoạt động</Text>
+                </View>
+                <View style={styles.statChip}>
+                  <Text style={[styles.statNum, styles.warningColor]}>
+                    {stats.maintenance}
+                  </Text>
+                  <Text style={styles.statText}>Bảo trì</Text>
+                </View>
               </View>
             </View>
-            <Text style={styles.summary}>
-              {stats.active}/{stats.total} sân hoạt động
-            </Text>
+
             <Pressable
               onPress={() => navigation.navigate('FieldForm')}
               style={({pressed}) => [
@@ -136,7 +146,7 @@ const styles = StyleSheet.create({
   overline: {
     ...typography.overline,
     color: colors.primary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   title: {
     ...typography.title,
@@ -145,43 +155,74 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.body,
     color: colors.textSecondary,
-    marginTop: spacing.sm,
-    marginBottom: spacing.lg,
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
   },
-  stats: {
+  banner: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  bannerTop: {
     flexDirection: 'row',
-  },
-  statItem: {
-    flex: 1,
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: spacing.md,
   },
-  statValue: {
+  bannerSummary: {
     ...typography.title,
+    fontSize: 20,
     color: colors.textPrimary,
   },
-  statLabel: {
+  liveIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(56, 185, 130, 0.15)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.success,
+    marginRight: 6,
+  },
+  liveText: {
+    ...typography.caption,
+    color: colors.success,
+    fontWeight: '700',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.md,
+  },
+  statChip: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statNum: {
+    ...typography.subtitle,
+    fontSize: 18,
+    color: colors.textPrimary,
+  },
+  statText: {
     ...typography.caption,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
+    marginTop: 2,
   },
-  success: {
+  successColor: {
     color: colors.success,
   },
-  warning: {
+  warningColor: {
     color: colors.warning,
-  },
-  summary: {
-    ...typography.body,
-    color: colors.textPrimary,
-    fontWeight: '600',
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
   },
   addButton: {
     minHeight: 48,

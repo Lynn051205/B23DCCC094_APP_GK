@@ -71,7 +71,7 @@ export function FieldDetailScreen({navigation, route}: Props) {
     Alert.alert('Hủy lượt đặt', 'Bạn chắc chắn muốn hủy lượt đặt này?', [
       {text: 'Hủy', style: 'cancel'},
       {
-        text: 'Xác nhận',
+        text: 'Xác nhận hủy',
         style: 'destructive',
         onPress: () => {
           cancelBooking(bookingId).catch(() => undefined);
@@ -84,34 +84,63 @@ export function FieldDetailScreen({navigation, route}: Props) {
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.hero}>
-          <Text style={styles.name}>{field.name}</Text>
-          <Text style={styles.meta}>
-            {field.type} · {formatPricePerHour(field.pricePerHour)}
-          </Text>
-          <Text
-            style={[
-              styles.status,
-              isMaintenance ? styles.warning : styles.success,
-            ]}>
-            {field.status}
-          </Text>
-          <Text style={styles.count}>{fieldBookings.length} lượt đặt</Text>
+          <View style={styles.heroHeader}>
+            <View style={styles.heroLeft}>
+              <Text style={styles.name}>{field.name}</Text>
+              <Text style={styles.meta}>
+                {field.type} · {formatPricePerHour(field.pricePerHour)}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.badge,
+                isMaintenance ? styles.badgeWarning : styles.badgeSuccess,
+              ]}>
+              <Text
+                style={[
+                  styles.badgeText,
+                  isMaintenance ? styles.badgeWarningText : styles.badgeSuccessText,
+                ]}>
+                {field.status}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.heroDivider} />
+
+          <View style={styles.heroFooter}>
+            <Text style={styles.countText}>
+              Đang có <Text style={styles.countHighlight}>{fieldBookings.length}</Text> lượt đặt
+            </Text>
+          </View>
         </View>
+
         {isMaintenance ? (
-          <Text style={styles.maintenanceNote}>
-            Sân đang bảo trì, không thể đặt sân
-          </Text>
+          <View style={styles.maintenanceBanner}>
+            <Text style={styles.maintenanceIcon}>⚠️</Text>
+            <Text style={styles.maintenanceNote}>
+              Sân đang bảo trì, không thể đặt sân lúc này.
+            </Text>
+          </View>
         ) : null}
+
         <PrimaryButton
           label="Đặt sân"
           disabled={isMaintenance}
           onPress={() => setModalVisible(true)}
         />
-        <Text style={styles.sectionTitle}>Lịch đặt</Text>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Danh sách lịch đặt</Text>
+          <Text style={styles.sectionSubtitle}>
+            ({fieldBookings.length} lượt)
+          </Text>
+        </View>
+
         {fieldBookings.length === 0 ? (
           <EmptyState
             title="Chưa có lượt đặt"
-            description="Sân này chưa có lịch thuê nào."
+            description="Sân này chưa có lịch thuê nào. Nhấn 'Đặt sân' để tạo lượt đặt mới."
           />
         ) : (
           <View style={styles.list}>
@@ -126,6 +155,7 @@ export function FieldDetailScreen({navigation, route}: Props) {
           </View>
         )}
       </ScrollView>
+
       <BookingModal
         visible={modalVisible}
         field={field}
@@ -145,7 +175,6 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     paddingBottom: spacing.xxxl,
-    gap: spacing.md,
   },
   hero: {
     backgroundColor: colors.surface,
@@ -153,41 +182,104 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
+    marginBottom: spacing.md,
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 2},
+  },
+  heroHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  heroLeft: {
+    flex: 1,
+    marginRight: spacing.sm,
   },
   name: {
     ...typography.title,
-    fontSize: 24,
+    fontSize: 22,
     color: colors.textPrimary,
   },
   meta: {
     ...typography.body,
     color: colors.textSecondary,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
-  status: {
+  badge: {
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  badgeSuccess: {
+    backgroundColor: 'rgba(56, 185, 130, 0.16)',
+  },
+  badgeWarning: {
+    backgroundColor: 'rgba(245, 154, 69, 0.16)',
+  },
+  badgeText: {
     ...typography.caption,
     fontWeight: '700',
-    marginTop: spacing.md,
   },
-  success: {
+  badgeSuccessText: {
     color: colors.success,
   },
-  warning: {
+  badgeWarningText: {
     color: colors.warning,
   },
-  count: {
-    ...typography.subtitle,
-    color: colors.textPrimary,
-    marginTop: spacing.sm,
+  heroDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
+  },
+  heroFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  countText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  countHighlight: {
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  maintenanceBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 154, 69, 0.12)',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 154, 69, 0.3)',
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  maintenanceIcon: {
+    fontSize: 16,
+    marginRight: spacing.sm,
   },
   maintenanceNote: {
     ...typography.body,
     color: colors.warning,
+    flex: 1,
+    fontWeight: '500',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xl,
+    marginBottom: spacing.md,
   },
   sectionTitle: {
     ...typography.subtitle,
     color: colors.textPrimary,
-    marginTop: spacing.sm,
+  },
+  sectionSubtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginLeft: spacing.xs,
   },
   list: {
     gap: spacing.md,

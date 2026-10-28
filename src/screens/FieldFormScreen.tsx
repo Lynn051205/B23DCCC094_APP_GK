@@ -58,9 +58,10 @@ export function FieldFormScreen({navigation, route}: Props) {
 
     setSubmitting(true);
     try {
-      const saved = isEdit && currentField
-        ? await updateField(currentField.id, payload)
-        : await addField(payload);
+      const saved =
+        isEdit && currentField
+          ? await updateField(currentField.id, payload)
+          : await addField(payload);
       if (saved) {
         navigation.goBack();
       }
@@ -73,7 +74,7 @@ export function FieldFormScreen({navigation, route}: Props) {
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.content}>
@@ -81,14 +82,21 @@ export function FieldFormScreen({navigation, route}: Props) {
           <Text style={styles.subtitle}>
             Nhập thông tin sân để quản lý giá thuê và trạng thái vận hành.
           </Text>
+
           <FormInput
-            label="Tên sân"
+            label="Tên sân *"
             value={values.name}
-            onChangeText={name => setValues(current => ({...current, name}))}
-            placeholder="Sân A1"
+            onChangeText={name => {
+              setValues(current => ({...current, name}));
+              if (errors.name) {
+                setErrors(prev => ({...prev, name: undefined}));
+              }
+            }}
+            placeholder="Ví dụ: Sân A1"
             error={errors.name}
           />
-          <Text style={styles.groupLabel}>Loại sân</Text>
+
+          <Text style={styles.groupLabel}>Loại sân *</Text>
           <View style={styles.options}>
             {(['5 người', '7 người'] as FieldType[]).map(type => (
               <View key={type} style={styles.optionItem}>
@@ -100,17 +108,22 @@ export function FieldFormScreen({navigation, route}: Props) {
               </View>
             ))}
           </View>
+
           <FormInput
-            label="Giá thuê mỗi giờ"
+            label="Giá thuê mỗi giờ (VNĐ) *"
             value={values.pricePerHour}
-            onChangeText={pricePerHour =>
-              setValues(current => ({...current, pricePerHour}))
-            }
-            placeholder="300000"
+            onChangeText={pricePerHour => {
+              setValues(current => ({...current, pricePerHour}));
+              if (errors.pricePerHour) {
+                setErrors(prev => ({...prev, pricePerHour: undefined}));
+              }
+            }}
+            placeholder="Ví dụ: 300000"
             keyboardType="numeric"
             error={errors.pricePerHour}
           />
-          <Text style={styles.groupLabel}>Trạng thái</Text>
+
+          <Text style={styles.groupLabel}>Trạng thái *</Text>
           <View style={styles.options}>
             {(['Hoạt động', 'Bảo trì'] as FieldStatus[]).map(status => (
               <View key={status} style={styles.optionItem}>
@@ -122,6 +135,7 @@ export function FieldFormScreen({navigation, route}: Props) {
               </View>
             ))}
           </View>
+
           <View style={styles.actions}>
             <View style={styles.actionItem}>
               <PrimaryButton
@@ -132,7 +146,7 @@ export function FieldFormScreen({navigation, route}: Props) {
             </View>
             <View style={styles.actionItem}>
               <PrimaryButton
-                label={submitting ? 'Đang lưu...' : 'Lưu'}
+                label={submitting ? 'Đang lưu...' : 'Lưu sân'}
                 disabled={submitting}
                 onPress={() => {
                   handleSave().catch(() => undefined);
@@ -166,29 +180,29 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.body,
     color: colors.textSecondary,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
     marginBottom: spacing.xl,
   },
   groupLabel: {
     ...typography.caption,
     color: colors.textSecondary,
     fontWeight: '600',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   options: {
     flexDirection: 'row',
-    gap: spacing.sm,
     marginBottom: spacing.lg,
   },
   optionItem: {
     flex: 1,
+    marginRight: spacing.sm,
   },
   actions: {
     flexDirection: 'row',
-    gap: spacing.sm,
     marginTop: spacing.md,
   },
   actionItem: {
     flex: 1,
+    marginHorizontal: spacing.xs,
   },
 });

@@ -19,16 +19,16 @@ export function BookingCard({booking, pricePerHour, onCancel}: Props) {
   return (
     <View style={styles.card}>
       <Text style={styles.name}>{booking.customerName}</Text>
-      <Text style={styles.meta}>{booking.phone}</Text>
+      <Text style={styles.meta}>Số điện thoại: {booking.phone}</Text>
       <Text style={styles.meta}>
-        {booking.date} · {formatTimeRange(booking.startHour, booking.hours)}
+        Thời gian: {booking.date} · {formatTimeRange(booking.startHour, booking.hours)}
       </Text>
-      <Text style={styles.meta}>{booking.hours} giờ thuê</Text>
+      <Text style={styles.meta}>Thời lượng: {booking.hours} giờ thuê</Text>
       <Text style={styles.total}>Thành tiền: {formatCurrency(total)}</Text>
       <Pressable
         onPress={onCancel}
         style={({pressed}) => [styles.cancel, pressed && styles.pressed]}>
-        <Text style={styles.cancelText}>Hủy đặt</Text>
+        <Text style={styles.cancelText}>Hủy đặt sân</Text>
       </Pressable>
     </View>
   );
@@ -41,33 +41,41 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
-    gap: spacing.xs,
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 2},
   },
   name: {
     ...typography.subtitle,
+    fontSize: 16,
     color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   meta: {
     ...typography.body,
     color: colors.textSecondary,
+    marginBottom: spacing.xs,
   },
   total: {
     ...typography.body,
-    color: colors.textPrimary,
+    color: colors.primary,
     fontWeight: '700',
     marginTop: spacing.xs,
+    marginBottom: spacing.sm,
   },
   cancel: {
-    marginTop: spacing.sm,
-    minHeight: 40,
+    minHeight: 38,
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.danger,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
   pressed: {
-    opacity: 0.85,
+    backgroundColor: 'rgba(240, 100, 112, 0.12)',
   },
   cancelText: {
     ...typography.caption,

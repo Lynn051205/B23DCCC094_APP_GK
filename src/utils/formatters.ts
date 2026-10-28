@@ -1,5 +1,11 @@
 export function formatCurrency(value: number): string {
-  return `${Math.round(value).toLocaleString('vi-VN')} đ`;
+  if (!Number.isFinite(value) || value <= 0) {
+    return '0 đ';
+  }
+  const parts = Math.round(value)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${parts} đ`;
 }
 
 export function formatPricePerHour(value: number): string {

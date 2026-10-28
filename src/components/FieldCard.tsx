@@ -17,30 +17,32 @@ export function FieldCard({field, onPress, onEdit, onDelete}: Props) {
   const isActive = field.status === 'Hoạt động';
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={({pressed}) => [styles.card, pressed && styles.pressed]}>
-      <View style={styles.topRow}>
-        <View style={styles.info}>
-          <Text style={styles.name}>{field.name}</Text>
-          <Text style={styles.meta}>
-            {field.type} · {formatPricePerHour(field.pricePerHour)}
-          </Text>
-        </View>
-        <View
-          style={[
-            styles.badge,
-            isActive ? styles.badgeSuccess : styles.badgeWarning,
-          ]}>
-          <Text
+    <View style={styles.card}>
+      <Pressable
+        onPress={onPress}
+        style={({pressed}) => [styles.mainArea, pressed && styles.pressed]}>
+        <View style={styles.topRow}>
+          <View style={styles.info}>
+            <Text style={styles.name}>{field.name}</Text>
+            <Text style={styles.meta}>
+              {field.type} · {formatPricePerHour(field.pricePerHour)}
+            </Text>
+          </View>
+          <View
             style={[
-              styles.badgeText,
-              isActive ? styles.badgeSuccessText : styles.badgeWarningText,
+              styles.badge,
+              isActive ? styles.badgeSuccess : styles.badgeWarning,
             ]}>
-            {field.status}
-          </Text>
+            <Text
+              style={[
+                styles.badgeText,
+                isActive ? styles.badgeSuccessText : styles.badgeWarningText,
+              ]}>
+              {field.status}
+            </Text>
+          </View>
         </View>
-      </View>
+      </Pressable>
       <View style={styles.actions}>
         <Pressable
           onPress={onEdit}
@@ -53,7 +55,7 @@ export function FieldCard({field, onPress, onEdit, onDelete}: Props) {
           <Text style={styles.deleteText}>Xóa</Text>
         </Pressable>
       </View>
-    </Pressable>
+    </View>
   );
 }
 
@@ -64,26 +66,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
-    gap: spacing.md,
     elevation: 3,
     shadowColor: '#000000',
     shadowOpacity: 0.18,
     shadowRadius: 8,
     shadowOffset: {width: 0, height: 4},
   },
+  mainArea: {
+    marginBottom: spacing.md,
+  },
   pressed: {
-    opacity: 0.92,
+    opacity: 0.75,
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: spacing.md,
+    justifyContent: 'space-between',
   },
   info: {
     flex: 1,
+    marginRight: spacing.md,
   },
   name: {
     ...typography.subtitle,
+    fontSize: 18,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
@@ -114,7 +120,6 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    gap: spacing.sm,
   },
   action: {
     flex: 1,
@@ -125,9 +130,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surfaceElevated,
+    marginHorizontal: spacing.xs,
   },
   actionPressed: {
-    opacity: 0.85,
+    opacity: 0.8,
   },
   editText: {
     ...typography.caption,

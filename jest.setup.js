@@ -1,22 +1,20 @@
-const {jest} = require('@jest/globals');
+/* eslint-env jest */
 
-jest.mock('@react-native-async-storage/async-storage', () =>
-  ({
+jest.mock('@react-native-async-storage/async-storage', () => {
+  const store = new Map();
+  return {
     __esModule: true,
     default: {
-      getItem: jest.fn(async () => null),
-      setItem: jest.fn(async () => undefined),
-      removeItem: jest.fn(async () => undefined),
+      setItem: jest.fn(async (key, value) => {
+        store.set(key, value);
+      }),
+      getItem: jest.fn(async key => (store.has(key) ? store.get(key) : null)),
+      removeItem: jest.fn(async key => {
+        store.delete(key);
+      }),
+      clear: jest.fn(async () => {
+        store.clear();
+      }),
     },
-  }),
-);
-
-jest.mock('@react-native-community/netinfo', () => ({
-  __esModule: true,
-  default: {
-    addEventListener: jest.fn(listener => {
-      listener({isConnected: false, isInternetReachable: false});
-      return jest.fn();
-    }),
-  },
-}));
+  };
+});

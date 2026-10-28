@@ -1,27 +1,35 @@
 import React from 'react';
-import {StatusBar, StyleSheet, View} from 'react-native';
+import {StatusBar} from 'react-native';
+import {NavigationContainer, DefaultTheme} from '@react-navigation/native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {NavigationContainer} from '@react-navigation/native';
-import AppNavigator from './src/navigation/AppNavigator';
-import {AppDataProvider} from './src/state/AppDataContext';
-import {OfflineBanner} from './src/components/OfflineBanner';
+import {FieldProvider} from './src/context/FieldContext';
+import {AppNavigator} from './src/navigation/AppNavigator';
+import {colors} from './src/theme/colors';
+
+const navigationTheme = {
+  ...DefaultTheme,
+  dark: true,
+  colors: {
+    ...DefaultTheme.colors,
+    background: colors.background,
+    card: colors.background,
+    text: colors.textPrimary,
+    border: colors.border,
+    primary: colors.primary,
+  },
+};
 
 function App() {
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" />
-      <AppDataProvider>
-        <View style={styles.container}>
-          <OfflineBanner />
-          <NavigationContainer>
-            <AppNavigator />
-          </NavigationContainer>
-        </View>
-      </AppDataProvider>
+      <StatusBar barStyle="light-content" />
+      <FieldProvider>
+        <NavigationContainer theme={navigationTheme}>
+          <AppNavigator />
+        </NavigationContainer>
+      </FieldProvider>
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({container: {flex: 1}});
 
 export default App;

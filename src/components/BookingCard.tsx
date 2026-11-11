@@ -10,6 +10,7 @@ import {computeTotalPrice} from '../utils/bookingUtils';
 type Props = {
   booking: Booking;
   pricePerHour: number;
+  // hàm xử lí khi hủy//
   onCancel: () => void;
 };
 
